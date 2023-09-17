@@ -1,0 +1,91 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'); */
+
+body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	height: 100vh;
+	overflow: hidden;
+	background-color: #222323;
+}
+
+#canvasContainer,
+#buttonContainer {
+	display: inline-block;
+	position: relative;
+	height: 320px;
+	width: 320px;
+}
+#outlineContext {
+	position: absolute;
+	height: 305px;
+	width: 305px;
+	top: 0;
+	border: solid #222323 5px;
+	display: none;
+}
+#enemyImageContext{
+	position: absolute;
+	height: 320px;
+	width: 320px;
+	top: 0;
+	border: solid #222323 5px;
+	z-index: 9;
+}
+#buttonContainer {
+	position: relative;
+	height: 320px;
+	width: 320px;
+}
+
+#buttonsContainer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1px;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.game-button {
+	width: 106px;
+	height: 106px;
+	background-color: #222323;
+	background-size: cover;
+	border: none;
+	margin-bottom: 5px;
+}
+
+@keyframes shake {
+    0% { transform: translateX(-1%); }
+    25% { transform: translateX(1%); }
+    50% { transform: translateX(-1%); }
+    75% { transform: translateX(1%); }
+    100% { transform: translateX(0%); }
+  }
+  
+  #imageContext.shake {
+      animation: shake 0.2s;
+  }
+
+  @keyframes damageEffect {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes deathEffect {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.enemy-damage {
+    animation: damageEffect 0.5s forwards;
+}
+
+.enemy-death {
+    animation: deathEffect 1s forwards;
+}
