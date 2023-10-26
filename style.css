@@ -47,12 +47,12 @@ body {
 }
 
 .game-button {
-	width: 106px;
-	height: 106px;
+	width: 97px;
+	height: 97px;
 	background-color: #222323;
 	background-size: cover;
 	border: none;
-	margin-bottom: 5px;
+	margin-bottom: 4px;
 }
 
 @keyframes shake {

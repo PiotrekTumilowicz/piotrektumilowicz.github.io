@@ -11,7 +11,7 @@ class GridSystem {
 		this.mapContext = this.getContext('mapContext', '#222323');
 		this.buttonContext = this.getContext('buttonContext', '#222323');
 
-		this.cellSize = 20;
+		this.cellSize = 18;
 		this.padding = 5;
 		this.discoveredMatrix = matrix.map(row => row.map(() => false));
 		this.player = new Player(playerX, playerY, this.loadImage.bind(this));
@@ -233,10 +233,13 @@ class GridSystem {
 	}
 	playerAttack() {
 		if (!this.currentEnemy) return;
+		console.log(this.enemyState)
 		if (this.enemyState === this.enemyStates.enemyPrepareToAttack) {
 			this.enemyPrepareToAttack();
+			this.currentEnemy.hp -= 1;
 			this.enemyState = this.enemyStates.enemyAttack;
-			console.log(this.enemyState)
+			
+			
 		} else if (this.enemyState === this.enemyStates.enemyAttack) {
 			console.log('Enemy Attack!');
 			this.player.hp -= 1;
@@ -244,12 +247,14 @@ class GridSystem {
 			this.render();
 			this.enemyAttack();
 			this.determineEnemyAction();
+
 		} else if (this.enemyState === this.enemyStates.enemyIdle) {
 			console.log('Enemy Idle!');
 			this.currentEnemy.hp -= 1;
 			console.log(`Attacking enemy ${this.currentEnemy.name}. Remaining HP: ${this.currentEnemy.hp}`);
 			this.enemyDamage();
 			this.determineEnemyAction();
+
 			if (this.currentEnemy.hp <= 0) {
 				console.log(`Enemy ${this.currentEnemy.name} defeated!`);
 				this.enemyManager.removeEnemy(this.currentEnemy);
@@ -269,7 +274,7 @@ class GridSystem {
 	playerDefense() {
 		if (!this.currentEnemy) return;
 		if (this.enemyState === this.enemyStates.enemyAttack) {
-			this.enemyIdle(this.currentEnemy);
+			this.enemyIdle();
 			this.determineEnemyAction();
 			console.log('Player successfully defended!');
 		} else if (this.enemyState === 'attack' && !this.playerDefending) {
@@ -360,10 +365,10 @@ class GridSystem {
 	}
 	handleButtonClick(id) {
 		if (this.state === this.states.exploring) {
-			console.log(`button clicked in exploring: ${id}`);
+			//console.log(`button clicked in exploring: ${id}`);
 			this.handleExploringActions(id);
 		} else if (this.state === this.states.fighting) {
-			console.log(`button clicked in fighting: ${id}`);
+			//console.log(`button clicked in fighting: ${id}`);
 			this.handleFightingActions(id);
 		}
 	}
