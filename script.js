@@ -1,129 +1,101 @@
-class Player {
-	constructor(x, y) {
-		this.x = x;
-		this.y = y;
-		this.color = 'orange';
-		this.direction = 'N';
-		this.idleAnimation = ['../player/sword_shield_01.png', '../player/sword_shield_02.png'];
-		this.currentIdleFrame = 0;
-		this.isMoving = false;
-	}
-}
-
-class Enemy {
-	constructor(name,x, y,combatImg,damageImg, deadImg) {
-		this.name = name;
-		this.x = x;
-		this.y = y;
-		this.hp = 3;
-		this.damage = 1;
-		this.combatImg = combatImg;
-		this.damageImg = damageImg;
-		this.deadImg = deadImg;
-
-	}
-}
-
-class EnemyManager {
-	constructor(loadImage) {
-		this.loadImage = loadImage;
-		this.enemies = [];
-	}
-
-	addEnemy(enemy) {
-		this.enemies.push(enemy);
-	}
-
-	getEnemyAt(x, y) {
-        return this.enemies.find(enemy => enemy.x === x && enemy.y === y);
-    }
-
-	removeEnemy(enemy) {
-		const index = this.enemies.indexOf(enemy);
-		if (index !== -1) {
-			this.enemies.splice(index, 1);
-		}
-	}
-
-	renderEnemies(player, context, w, h) {
-		const { x, y } = player;
-	
-		this.enemies.forEach(enemy => {
-			if (enemy.x === x && enemy.y === y) {
-				this.loadImage(enemy.combatImg).then(img => {
-					context.drawImage(img, 0, 0, w, h);
-				});
-			}
-		});
-	}
-	renderEnemyDamage(enemy, context, w, h) {
-		this.loadImage(enemy.damageImg).then(img => {
-			context.drawImage(img, 0, 0, w, h);
-			// Po pewnym czasie wróć do obrazka bazowego (na przykład po 500 ms)
-			setTimeout(() => {
-				this.loadImage(enemy.combatImg).then(baseImg => {
-					context.drawImage(baseImg, 0, 0, w, h);
-				});
-			}, 500);
-		});
-	}
-	
-	renderEnemyDeath(enemy, context, w, h) {
-		this.loadImage(enemy.deadImg).then(img => {
-			context.drawImage(img, 0, 0, w, h);
-			// Po pewnym czasie usuń obrazek (na przykład po 1000 ms)
-			setTimeout(() => {
-				context.clearRect(0, 0, w, h);
-			}, 1000);
-		});
-	}
-	
-	
-}
+import { Player } from '../player.js';
+import { Enemy, EnemyManager } from '../enemy.js';
 
 class GridSystem {
 	constructor(matrix, playerX, playerY) {
 		this.matrix = matrix;
+		this.playerUiContext = this.getContext('playerUiContext', '#FF0000');
+		this.playerImageContext = this.getContext('playerImageContext', 'yellow');
 		this.enemyImageContext = this.getContext('enemyImageContext', 'red');
-		this.imageContext = this.getContext('imageContext', '#222323');
-		this.outlineContext = this.getContext('outlineContext', '#222323');
+		this.labiryntImageContext = this.getContext('labiryntImageContext', '#222323');
+		this.mapContext = this.getContext('mapContext', '#222323');
 		this.buttonContext = this.getContext('buttonContext', '#222323');
-		this.arrowBackgroundColor = '#222323';
+
 		this.cellSize = 20;
 		this.padding = 5;
 		this.discoveredMatrix = matrix.map(row => row.map(() => false));
-		this.player = new Player(playerX, playerY);
+		this.player = new Player(playerX, playerY, this.loadImage.bind(this));
 		this.enemyManager = new EnemyManager(this.loadImage.bind(this));
-		this.enemyManager.addEnemy(new Enemy('Bat',1, 1, '../enemies/monster10.png','../enemies/monster11.png','../enemies/monster12.png',  ));
+		this.enemyManager.addEnemy(
+			new Enemy(
+				'Bat',
+				1,
+				1,
+				'../enemies/monster10_idle.png',
+				'../enemies/monster10_prepareToAttack.png',
+				'../enemies/monster10_attack.png',
+				'../enemies/monster10_damage.png',
+				'../enemies/monster10_dead.png',
+				3
+			)
+		);
+		this.enemyManager.addEnemy(
+			new Enemy(
+				'Bat2',
+				1,
+				10,
+				'../enemies/monster10_idle.png',
+				'../enemies/monster10_prepareToAttack.png',
+				'../enemies/monster10_attack.png',
+				'../enemies/monster10_damage.png',
+				'../enemies/monster10_dead.png',
+				3
+			)
+		);
 		this.discoveredMatrix[playerY][playerX] = true;
 		this.matrix[playerY][playerX] = 2;
 		this.showMaze = false;
 		this.imageCache = {};
 		this.states = {
 			exploring: 'exploring',
-			fighting: 'fighting'
+			fighting: 'fighting',
+			waiting: 'waiting',
 		};
 		this.state = this.states.exploring;
 		this.buttonImages = {
 			exploring: '../buttons/',
-			fighting: '../fight-buttons/'
+			fighting: '../fight-buttons/',
 		};
+		this.enemyStates = {
+			enemyIdle: 'enemyIdle',
+			enemyPrepareToAttack: 'enemyPrepareToAttack',
+			enemyAttack: 'enemyAttack',
+		};
+		this.enemyState = this.enemyStates.enemyIdle;
 		this.currentEnemy = null;
-
-		document.addEventListener('keydown', this.#handleKeyDown.bind(this));
-		document.addEventListener('keyup', this.#handleKeyUp.bind(this));
-		this.render();
 		this.generateButtons();
+		this.w = 0;
+		this.h = 0;
+		this.directions = {
+			N: { dx: 0, dy: -1, left: 'W', right: 'E' },
+			E: { dx: 1, dy: 0, left: 'N', right: 'S' },
+			S: { dx: 0, dy: 1, left: 'E', right: 'W' },
+			W: { dx: -1, dy: 0, left: 'S', right: 'N' },
+		};
+		// document.addEventListener('keydown', this.#handleKeyDown.bind(this));
+		// document.addEventListener('keyup', this.#handleKeyUp.bind(this));
 	}
 	getContext(id, color = '#111', isTransparent = false) {
 		const canvas = document.createElement('canvas');
 		const context = canvas.getContext('2d');
 		canvas.id = id;
 		canvas.classList.add(id);
-		if (id === 'imageContext') {
+		if (id === 'labiryntImageContext') {
 			canvas.classList.add('pixel-perfect');
 		}
-		if (id=== 'enemyImageContext'){
+		if (id === 'enemyImageContext') {
+			canvas.classList.add('pixel-perfect');
+			isTransparent = true;
+		}
+		if (id === 'playerImageContext') {
+			canvas.classList.add('pixel-perfect');
+			isTransparent = true;
+		}
+		if (id === 'playerUiContext') {
+			canvas.classList.add('pixel-perfect');
+			isTransparent = true;
+		}
+		if (id === 'playerUiContext') {
 			canvas.classList.add('pixel-perfect');
 			isTransparent = true;
 		}
@@ -134,9 +106,15 @@ class GridSystem {
 		let containerId;
 		if (id === 'buttonContext') {
 			containerId = 'buttonContainer';
+		} else if (id === 'playerImageContext') {
+			containerId = 'canvasContainer';
 		} else if (id === 'enemyImageContext') {
-			containerId = 'canvasContainer'; // lub inny dedykowany kontener dla enemyImageContext
-		} else {
+			containerId = 'canvasContainer';
+		} else if (id === 'enemyImageContext') {
+			containerId = 'canvasContainer';
+		} else if (id === 'playerUiContext') {
+			containerId = 'playerUiContext';
+		}else {
 			containerId = 'canvasContainer';
 		}
 		let container = document.getElementById(containerId);
@@ -149,21 +127,66 @@ class GridSystem {
 		return context;
 	}
 	async render() {
+
 		const wallImageName = this.#getWallImageName();
-		const wallImage = await this.loadImage(`../images/${wallImageName}`);
+		//const wallImageName = this.#getDirectionImage();
+
+		this.loadImage(`../images/${wallImageName}`).then(wallImage => {
+			this.labiryntImageContext.drawImage(wallImage, 0, 0, w, h);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
+
+		this.loadImage(`../ui/player_border.png`).then(playerDirection => {
+			this.playerUiContext.drawImage(playerDirection, 0, 0, w, h/3);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
+
+		this.loadImage(`../ui/player_direction_${this.player.direction}.png`).then(playerDirection => {
+			this.playerUiContext.drawImage(playerDirection, 0, 0, w, h/3);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
+
+		this.loadImage(`../ui/player_floor_1.png`).then(playerFloor => {
+			this.playerUiContext.drawImage(playerFloor, 0, 0, w, h/3);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
+
+		this.loadImage(`../ui/player_hp_${this.player.hp}.png`).then(playerHp => {
+			this.playerUiContext.drawImage(playerHp, 0, 0, w, h/3);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
+
+		this.loadImage(`../ui/player_portret_10.png`).then(playerPortret => {
+			this.playerUiContext.drawImage(playerPortret, 0, 0, w, h/3);
+		}).catch(error => {
+			console.error("Błąd podczas ładowania obrazka:", error);
+		});
 
 		const w = (this.cellSize + this.padding) * this.matrix[0].length - this.padding;
 		const h = (this.cellSize + this.padding) * this.matrix.length - this.padding;
-
+		
+		this.w = w;
+		this.h = h;
+		
+		this.playerImageContext.canvas.width = w;
+		this.playerImageContext.canvas.height = h;
 		this.enemyImageContext.canvas.width = w;
 		this.enemyImageContext.canvas.height = h;
-		this.imageContext.canvas.width = w;
-		this.imageContext.canvas.height = h;
-		this.outlineContext.canvas.width = w;
-		this.outlineContext.canvas.height = h;
+		this.labiryntImageContext.canvas.width = w;
+		this.labiryntImageContext.canvas.height = h;
+		this.mapContext.canvas.width = w;
+		this.mapContext.canvas.height = h;
 		this.buttonContext.canvas.width = w;
 		this.buttonContext.canvas.height = h;
-		this.imageContext.drawImage(wallImage, 0, 0, w, h);
+		this.playerUiContext.canvas.width = w;
+		this.playerUiContext.canvas.height = h/3;
+
+		this.player.renderPlayer(this.player, this.playerImageContext, w, h);
 
 		for (let row = 0; row < this.matrix.length; row++) {
 			for (let col = 0; col < this.matrix[row].length; col++) {
@@ -173,22 +196,9 @@ class GridSystem {
 				}
 			}
 		}
-		this.enemyManager.renderEnemies(this.player, this.enemyImageContext, w, h);
-
-		const idleImgSrc = this.player.idleAnimation[this.player.currentIdleFrame];
-		this.loadImage(idleImgSrc)
-			.then(img => {
-				this.imageContext.drawImage(img, 0, 0, w, h);
-				this.player.currentIdleFrame = (this.player.currentIdleFrame + 1) % this.player.idleAnimation.length;
-			})
-			.catch(error => {
-				console.error('Błąd podczas ładowania idle gracza:', error);
-			});
-
 		if (this.showMaze) {
 			for (let row = 0; row < this.matrix.length; row++) {
 				for (let col = 0; col < this.matrix[row].length; col++) {
-					// Renderuj tylko odkryte komórki
 					if (!this.discoveredMatrix[row][col]) {
 						continue;
 					}
@@ -204,8 +214,8 @@ class GridSystem {
 						color = this.player.color;
 					}
 
-					this.outlineContext.fillStyle = color;
-					this.outlineContext.fillRect(x, y, this.cellSize, this.cellSize);
+					this.mapContext.fillStyle = color;
+					this.mapContext.fillRect(x, y, this.cellSize, this.cellSize);
 
 					if (cellVal === 2) {
 						this.drawPlayerDirection(x, y, this.player.direction);
@@ -213,26 +223,33 @@ class GridSystem {
 				}
 			}
 		} else {
-			this.outlineContext.clearRect(0, 0, this.outlineContext.canvas.width, this.outlineContext.canvas.height);
+			this.mapContext.clearRect(0, 0, this.mapContext.canvas.width, this.mapContext.canvas.height);
 		}
 	}
-
-	
-
 	startBattle(enemy) {
-		this.switchToFightState();
 		this.currentEnemy = enemy;
-		console.log(this.currentEnemy);
+		this.enemyIdle(this.currentEnemy);
+		this.switchToFightState();
 	}
 	playerAttack() {
-		console.log('player attack');
-		if (this.currentEnemy) {
+		if (!this.currentEnemy) return;
+		if (this.enemyState === this.enemyStates.enemyPrepareToAttack) {
+			this.enemyPrepareToAttack();
+			this.enemyState = this.enemyStates.enemyAttack;
+			console.log(this.enemyState)
+		} else if (this.enemyState === this.enemyStates.enemyAttack) {
+			console.log('Enemy Attack!');
+			this.player.hp -= 1;
+			console.log(this.player.hp)
+			this.render();
+			this.enemyAttack();
+			this.determineEnemyAction();
+		} else if (this.enemyState === this.enemyStates.enemyIdle) {
+			console.log('Enemy Idle!');
 			this.currentEnemy.hp -= 1;
 			console.log(`Attacking enemy ${this.currentEnemy.name}. Remaining HP: ${this.currentEnemy.hp}`);
-	
-			// Podmień obrazek na wersję "damaged"
-			this.enemyManager.renderEnemyDamage(this.currentEnemy, this.enemyImageContext, window.innerWidth, window.innerHeight);
-	
+			this.enemyDamage();
+			this.determineEnemyAction();
 			if (this.currentEnemy.hp <= 0) {
 				console.log(`Enemy ${this.currentEnemy.name} defeated!`);
 				this.enemyManager.removeEnemy(this.currentEnemy);
@@ -240,165 +257,161 @@ class GridSystem {
 			}
 		}
 	}
-	
+	determineEnemyAction() {
+		const randomNumber = Math.random();
+
+		if (randomNumber < 0.5) {
+			this.enemyState = this.enemyStates.enemyIdle;
+		} else {
+			this.enemyState = this.enemyStates.enemyPrepareToAttack;
+		}
+	}
+	playerDefense() {
+		if (!this.currentEnemy) return;
+		if (this.enemyState === this.enemyStates.enemyAttack) {
+			this.enemyIdle(this.currentEnemy);
+			this.determineEnemyAction();
+			console.log('Player successfully defended!');
+		} else if (this.enemyState === 'attack' && !this.playerDefending) {
+			this.enemyAttack();
+		}
+		this.determineEnemyAction();
+	}
+	enemyIdle() {
+		if (this.currentEnemy) {
+			this.enemyManager.renderEnemyIdle(this.currentEnemy, this.enemyImageContext, this.w, this.h);
+		}
+	}
+	enemyPrepareToAttack() {
+		if (this.currentEnemy) {
+			this.enemyManager.renderEnemyPrepareToAttack(this.currentEnemy, this.enemyImageContext, this.w, this.h);
+		}
+	}
+	enemyAttack() {
+		if (this.currentEnemy) {
+			this.player.renderPlayerDamage(this.player, this.playerImageContext, this.w, this.h);
+			this.enemyManager.renderEnemyAttack(this.currentEnemy, this.enemyImageContext, this.w, this.h);
+		}
+	}
+	enemyDamage() {
+		if (this.currentEnemy) {
+			this.enemyManager.renderEnemyDamage(this.currentEnemy, this.enemyImageContext, this.w, this.h);
+		}
+	}
+	renderEnemyDeath() {
+		if (this.currentEnemy) {
+			this.enemyManager.renderEnemyDeath(this.currentEnemy, this.enemyImageContext, this.w, this.h);
+		}
+	}
 	endBattle() {
-		this.enemyManager.renderEnemyDeath(this.currentEnemy, this.enemyImageContext, window.innerWidth, window.innerHeight);
+		this.enemyManager.renderEnemyDeath(this.currentEnemy, this.enemyImageContext, this.w, this.h);
 		this.switchToExploringState();
-	}
-	checkForEnemyAt(x, y) {
-		return this.enemyManager.getEnemyAt(x, y);
-	}
-
-	async generateButtons() {
-		const buttonContainer = document.getElementById('buttonContainer');
-		const buttonsContainer = document.createElement('div');
-		buttonsContainer.id = 'buttonsContainer';
-		buttonContainer.appendChild(buttonsContainer);
-		// Załaduj wszystkie obrazki przed generowaniem przycisków
-		const imagePromises = [];
-		for (let i = 1; i <= 9; i++) {
-			imagePromises.push(this.loadImage(`${this.buttonImages[this.state]}${i}.png`));
-			imagePromises.push(this.loadImage(`${this.buttonImages[this.state]}${i}-pressed.png`));
-		}
-		// Czekaj na załadowanie wszystkich obrazków
-		await Promise.all(imagePromises);
-
-		for (let i = 1; i <= 9; i++) {
-			const btn = document.createElement('button');
-			btn.classList.add('game-button');
-			btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${i}.png)`;
-			btn.dataset.id = i; // Przypisz ID przycisku jako data-atrybut	
-			// Obsługa myszy
-			btn.addEventListener('mousedown', () => this.handleButtonDown(i, btn));
-			btn.addEventListener('mouseup', () => this.handleButtonUp(i, btn));
-			btn.addEventListener('mouseleave', () => this.handleButtonUp(i, btn));
-			// Obsługa dotyku
-			btn.addEventListener('touchstart', (event) => {
-				event.preventDefault(); // zapobiega dodatkowym zdarzeniom myszy na niektórych urządzeniach
-				this.handleButtonDown(i, btn);
-			});
-			btn.addEventListener('touchend', (event) => {
-				event.preventDefault(); // zapobiega dodatkowym zdarzeniom myszy na niektórych urządzeniach
-				this.handleButtonUp(i, btn);
-			});
-			if (i === 5) {
-				btn.addEventListener('mousedown', this.handleMapButtonDown.bind(this));
-				btn.addEventListener('mouseup', this.handleMapButtonUp.bind(this));
-			} else {
-				btn.addEventListener('click', this.buttonClicked.bind(this, i));
-			}
-			buttonsContainer.appendChild(btn);
-		}
-	}
-	refreshButtons() {
-		console.log('Aktualny stan:', this.state); // dodaj tę linię
-
-		const buttonsContainer = document.getElementById('buttonsContainer');
-		if (!buttonsContainer) return;
-	
-		const buttons = buttonsContainer.getElementsByClassName('game-button');
-		for (let btn of buttons) {
-			const buttonId = btn.dataset.id;
-			btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${buttonId}.png)`;
-		}
+		this.currentEnemy = null;
 	}
 	switchToFightState() {
-		this.state = this.states.fighting;
-		this.refreshButtons();
+		this.setState('fighting');
+		//this.state = this.states.fighting;
 	}
 	switchToExploringState() {
-		this.state = this.states.exploring;
+		this.setState('exploring');
+		//this.state = this.states.exploring;
+	}
+	generateButtons() {
+		const buttonContainer = document.querySelector('#buttonContainer');
+		const buttonsContainer = document.createElement('div');
+		buttonsContainer.id = 'buttonsContainer';
+
+		for (let i = 1; i <= 9; i++) {
+			const btn = this.createButton(i);
+			buttonsContainer.appendChild(btn);
+		}
+
+		buttonContainer.appendChild(buttonsContainer);
+	}
+	createButton(id) {
+		const btn = document.createElement('button');
+		btn.className = 'game-button';
+		btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${id}.png)`;
+		btn.dataset.id = id;
+		const setPressedImage = () => {
+			btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${id}-pressed.png)`;
+		};
+		const setNormalImage = () => {
+			btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${id}.png)`;
+		};
+		btn.addEventListener('mousedown', setPressedImage);
+		btn.addEventListener('mouseup', setNormalImage);
+		btn.addEventListener('mouseleave', setNormalImage);
+		btn.addEventListener('touchstart', setPressedImage);
+		btn.addEventListener('touchend', setNormalImage);
+		btn.addEventListener('click', () => this.handleButtonClick(id));
+		return btn;
+	}
+	setState(newState) {
+		this.state = newState;
 		this.refreshButtons();
 	}
-	buttonClicked(buttonId) {
-		const outlineCanvas = document.getElementById('outlineContext');
+	refreshButtons() {
+		const buttons = document.querySelectorAll('.game-button');
+		buttons.forEach(btn => {
+			const id = btn.dataset.id;
+			btn.style.backgroundImage = `url(${this.buttonImages[this.state]}${id}.png)`;
+		});
+	}
+	handleButtonClick(id) {
 		if (this.state === this.states.exploring) {
-			switch (buttonId) {
-				case 2:
-					this.movePlayer({ keyCode: 38 }); // Strzałka do góry
-					break;
-				case 4:
-					this.movePlayer({ keyCode: 37 }); // Strzałka w lewo
-					break;
-				case 6:
-					this.movePlayer({ keyCode: 39 }); // Strzałka w prawo
-					break;
-				case 5:
-					if (!this.showMaze) {
-						this.showMaze = true;
-						outlineCanvas.style.display = 'block';
-						this.render();
-					} else {
-						this.showMaze = false;
-						outlineCanvas.style.display = 'none';
-						this.render();
-					}
-					break;
-			}
+			console.log(`button clicked in exploring: ${id}`);
+			this.handleExploringActions(id);
 		} else if (this.state === this.states.fighting) {
-			if (buttonId === 3) {
+			console.log(`button clicked in fighting: ${id}`);
+			this.handleFightingActions(id);
+		}
+	}
+	handleExploringActions(id) {
+		const actionMap = {
+			1: () => {
+				this.shakeScreen();
+				this.renderPlayerAction('defense');
+			},
+			2: () => this.movePlayer({ keyCode: 'Forward' }),
+			3: () => {
+				this.shakeScreen();
+				this.renderPlayerAction('attack');
+			},
+			4: () => this.movePlayer({ keyCode: 'Left' }),
+			5: () => this.movePlayer({ keyCode: 'Backward' }),
+			6: () => this.movePlayer({ keyCode: 'Right' }),
+			8: () => this.toggleMazeVisibility(),
+		};
+
+		if (actionMap[id]) actionMap[id]();
+	}
+	handleFightingActions(id) {
+		const actionMap = {
+			1: () => {
+				this.shakeScreen();
+				this.renderPlayerAction('defense');
+				this.playerDefense();
+			},
+			3: () => {
+				this.shakeScreen();
+				this.renderPlayerAction('attack');
 				this.playerAttack();
-			}
-		}
+			},
+		};
+		if (actionMap[id]) actionMap[id]();
 	}
-	handleButtonDown(buttonId, btn) {
-		const pressedImageUrl = `${this.buttonImages[this.state]}${buttonId}-pressed.png`;
-		btn.style.backgroundImage = `url(${pressedImageUrl})`;
-	}
-	handleButtonUp(buttonId, btn) {
-		const defaultImageUrl = `${this.buttonImages[this.state]}${buttonId}.png`;
-		btn.style.backgroundImage = `url(${defaultImageUrl})`;
-	}
-	moveForward() {
-		const imageContext = document.getElementById('imageContext');
-		imageContext.style.transform = 'scale(0.3)';
-		imageContext.style.transform = 'translateY(-0.3%)';
-		imageContext.style.maskImage = 'radial-gradient(circle, white 90%, transparent 95%)';
-		setTimeout(() => {
-			imageContext.style.transform = 'scale(1)';
-			imageContext.style.maskImage = 'none';
-		}, 150);
-	}
-	turnLeft() {
-		const imageContext = document.getElementById('imageContext');
-		imageContext.style.transform = 'translateX(-0.5%)'; // Przesuń w lewo o 5%
-
-		setTimeout(() => {
-			imageContext.style.transform = 'translateX(0%)';
-		}, 150);
-	}
-	turnRight() {
-		const imageContext = document.getElementById('imageContext');
-		imageContext.style.transform = 'translateX(0.5%)'; // Przesuń w prawo o 5%
-
-		setTimeout(() => {
-			imageContext.style.transform = 'translateX(0%)';
-		}, 150);
-	}
-	#isValidMove(x, y) {
-		if (this.matrix[this.player.y + y][this.player.x + x] === 0) {
-			return true;
-		}
-
-		this.#shakeScreen();
-		return false;
-	}
-	#shakeScreen() {
-		const imageContext = document.getElementById('imageContext');
-		imageContext.classList.add('shake');
-		setTimeout(() => {
-			imageContext.classList.remove('shake');
-		}, 200);
-	}
-	#updateMatrix(y, x, val) {
-		this.matrix[y][x] = val;
+	renderPlayerAction(actionType) {
+		const actionMethods = {
+			defense: () => this.player.renderPlayerDefense(this.player, this.playerImageContext, this.w, this.h),
+			attack: () => this.player.renderPlayerAttack(this.player, this.playerImageContext, this.w, this.h),
+		};
+		if (actionMethods[actionType]) actionMethods[actionType]();
 	}
 	movePlayer = ({ keyCode }) => {
 		if (this.showMaze) return;
 		let dx = 0;
 		let dy = 0;
-
-
 		switch (this.player.direction) {
 			case 'N':
 				dy = -1;
@@ -413,9 +426,7 @@ class GridSystem {
 				dx = -1;
 				break;
 		}
-
-		if (keyCode === 37) {
-			// Strzałka w lewo
+		if (keyCode === 'Left') {
 			switch (this.player.direction) {
 				case 'N':
 					this.player.direction = 'W';
@@ -430,10 +441,9 @@ class GridSystem {
 					this.player.direction = 'S';
 					break;
 			}
-			this.turnRight();
+			this.shakeScreenTurnRight();
 			this.player.isMoving = true;
-		} else if (keyCode === 39) {
-			// Strzałka w prawo
+		} else if (keyCode === 'Right') {
 			switch (this.player.direction) {
 				case 'N':
 					this.player.direction = 'E';
@@ -448,34 +458,89 @@ class GridSystem {
 					this.player.direction = 'N';
 					break;
 			}
-			this.turnLeft();
+			this.shakeScreenTurnLeft();
 			this.player.isMoving = true;
-		} else if (keyCode === 38) {
-			// Strzałka do góry
-			if (keyCode === 38) {
-				// Strzałka do góry
-				if (this.#isValidMove(dx, dy)) {
-					this.#updateMatrix(this.player.y, this.player.x, 0);
-					this.#updateMatrix(this.player.y + dy, this.player.x + dx, 2);
-					this.player.y += dy;
-					this.player.x += dx;
-					this.player.isMoving = true;
-					this.moveForward();
-					
-					// Sprawdzenie, czy na nowej pozycji gracza jest wróg:
-					const enemy = this.enemyManager.getEnemyAt(this.player.x, this.player.y);
-					if (enemy) {
-						this.startBattle(enemy);
-					}
-				}
+		} else if (keyCode === 'Forward') {
+			if (this.#isValidMove(dx, dy)) {
+				this.#updateMatrix(this.player.y, this.player.x, 0);
+				this.#updateMatrix(this.player.y + dy, this.player.x + dx, 2);
+				this.player.y += dy;
+				this.player.x += dx;
+				this.player.isMoving = true;
+				this.shakeScreenMoveForward();
+			}
+		} else if (keyCode === 'Backward') {
+			if (this.#isValidMove(-dx, -dy)) {
+				this.#updateMatrix(this.player.y, this.player.x, 0);
+				this.#updateMatrix(this.player.y - dy, this.player.x - dx, 2);
+				this.player.y -= dy;
+				this.player.x -= dx;
+				this.player.isMoving = true;
+				this.shakeScreenMoveForward();
 			}
 		}
-
 		if (this.player.isMoving) {
+			const enemy = this.checkPlayerEnemyCollision();
+			if (enemy) {
+				console.log(enemy)
+				this.startBattle(enemy);
+			}
 			this.render();
-			console.log(this.player.direction);
 		}
 	};
+	toggleMazeVisibility() {
+		const outlineCanvas = document.querySelector('#mapContext');
+		this.showMaze = !this.showMaze;
+		outlineCanvas.style.display = this.showMaze ? 'block' : 'none';
+		this.render();
+	}
+	#isValidMove(dx, dy) {
+		if (this.matrix[this.player.y + dy][this.player.x + dx] === 0) {
+			// console.log('IsValidMove');
+			return true;
+		}
+		this.shakeScreen();
+		return false;
+	}
+	checkPlayerEnemyCollision() {
+		return this.enemyManager.getEnemyAt(this.player.x, this.player.y);
+	}
+	#updateMatrix(y, x, val) {
+		this.matrix[y][x] = val;
+	}
+	shakeScreen() {
+		const imageContext = document.getElementById('labiryntImageContext');
+		imageContext.classList.add('shake');
+		setTimeout(() => {
+			imageContext.classList.remove('shake');
+		}, 300);
+	}
+	shakeScreenMoveForward() {
+		const imageContext = document.getElementById('labiryntImageContext');
+		imageContext.style.transform = 'scale(0.3)';
+		imageContext.style.transform = 'translateY(-0.3%)';
+		imageContext.style.maskImage = 'radial-gradient(circle, white 90%, transparent 95%)';
+		setTimeout(() => {
+			imageContext.style.transform = 'scale(1)';
+			imageContext.style.maskImage = 'none';
+		}, 150);
+	}
+	shakeScreenTurnLeft() {
+		const imageContext = document.getElementById('labiryntImageContext');
+		imageContext.style.transform = 'translateX(-0.5%)'; // Przesuń w lewo o 5%
+
+		setTimeout(() => {
+			imageContext.style.transform = 'translateX(0%)';
+		}, 150);
+	}
+	shakeScreenTurnRight() {
+		const imageContext = document.getElementById('labiryntImageContext');
+		imageContext.style.transform = 'translateX(0.5%)'; // Przesuń w prawo o 5%
+
+		setTimeout(() => {
+			imageContext.style.transform = 'translateX(0%)';
+		}, 150);
+	}
 	loadImage(src) {
 		if (this.imageCache[src]) {
 			return Promise.resolve(this.imageCache[src]);
@@ -492,23 +557,18 @@ class GridSystem {
 	}
 	#getWallImageName() {
 		const { x, y, direction } = this.player;
+		console.log(this.player);
+		const { dx, dy, left, right } = this.directions[direction];
 
-		const directions = {
-			N: { dx: 0, dy: -1, left: 'W', right: 'E' },
-			E: { dx: 1, dy: 0, left: 'N', right: 'S' },
-			S: { dx: 0, dy: 1, left: 'E', right: 'W' },
-			W: { dx: -1, dy: 0, left: 'S', right: 'N' },
+		const getCellValue = (dx, dy) => {
+			return (this.matrix[y + dy] && this.matrix[y + dy][x + dx]) || 0;
 		};
 
-		const { dx, dy, left, right } = directions[direction];
-		const frontCell = this.matrix[y + dy] && this.matrix[y + dy][x + dx];
-		const leftCell =
-			this.matrix[y + directions[left].dy] && this.matrix[y + directions[left].dy][x + directions[left].dx];
-		const rightCell =
-			this.matrix[y + directions[right].dy] && this.matrix[y + directions[right].dy][x + directions[right].dx];
+		const frontCell = getCellValue(dx, dy);
+		const leftCell = getCellValue(this.directions[left].dx, this.directions[left].dy);
+		const rightCell = getCellValue(this.directions[right].dx, this.directions[right].dy);
 
 		let imageName = 'wall-';
-
 		if (frontCell === 0 && leftCell === 1 && rightCell === 1) {
 			imageName += '1';
 		} else if (leftCell === 1 && frontCell === 0 && rightCell === 0) {
@@ -528,46 +588,11 @@ class GridSystem {
 		} else if (leftCell === 0 && frontCell === 1 && rightCell === 0) {
 			imageName += '9';
 		}
-
 		return imageName + '.png';
 	}
-	#handleKeyDown = ({ keyCode }) => {
-		const outlineCanvas = document.getElementById('outlineContext');
-
-		if (keyCode === 32) {
-			// Spacja
-			this.showMaze = true;
-			outlineCanvas.style.display = 'block'; // Pokaż canvas
-			this.render();
-		} else {
-			this.movePlayer({ keyCode });
-		}
-	};
-	#handleKeyUp = ({ keyCode }) => {
-		const outlineCanvas = document.getElementById('outlineContext');
-
-		if (keyCode === 32) {
-			// Spacja
-			this.showMaze = false;
-			outlineCanvas.style.display = 'none';
-			this.render();
-		}
-	};
-	handleMapButtonDown() {
-		const outlineCanvas = document.getElementById('outlineContext');
-		this.showMaze = true;
-		outlineCanvas.style.display = 'block'; // Pokaż canvas
-		this.render();
-	}
-	handleMapButtonUp() {
-		const outlineCanvas = document.getElementById('outlineContext');
-		this.showMaze = false;
-		outlineCanvas.style.display = 'none'; // Ukryj canvas
-		this.render();
-	}
 	drawPlayerDirection(x, y) {
-		this.outlineContext.fillStyle = '#c6b7be';
-		this.outlineContext.fillRect(x, y, this.cellSize, this.cellSize);
+		this.mapContext.fillStyle = '#c6b7be';
+		this.mapContext.fillRect(x, y, this.cellSize, this.cellSize);
 	}
 	#isCellVisible(col, row) {
 		const withinXRange = Math.abs(col - this.player.x) <= 1;
@@ -576,7 +601,6 @@ class GridSystem {
 		return withinXRange && withinYRange;
 	}
 }
-
 const gridMatrix = [
 	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 	[1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -592,6 +616,5 @@ const gridMatrix = [
 	[1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1],
 	[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
-
 const gridSystem = new GridSystem(gridMatrix, 1, 11);
 gridSystem.render();

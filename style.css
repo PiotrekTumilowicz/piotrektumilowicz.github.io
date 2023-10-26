@@ -16,29 +16,25 @@ body {
 #buttonContainer {
 	display: inline-block;
 	position: relative;
-	height: 320px;
-	width: 320px;
 }
-#outlineContext {
+#mapContext {
 	position: absolute;
-	height: 305px;
-	width: 305px;
-	top: 0;
 	border: solid #222323 5px;
 	display: none;
-}
-#enemyImageContext{
-	position: absolute;
-	height: 320px;
-	width: 320px;
 	top: 0;
-	border: solid #222323 5px;
 	z-index: 9;
 }
-#buttonContainer {
-	position: relative;
-	height: 320px;
-	width: 320px;
+#playerImageContext {
+	position: absolute;
+	z-index: 2;
+}
+#enemyImageContext {
+	position: absolute;
+	z-index: 1;
+}
+#backgroundPlayerUi{
+	position: relative; 
+	z-index: 4;
 }
 
 #buttonsContainer {
@@ -60,32 +56,72 @@ body {
 }
 
 @keyframes shake {
-    0% { transform: translateX(-1%); }
-    25% { transform: translateX(1%); }
-    50% { transform: translateX(-1%); }
-    75% { transform: translateX(1%); }
-    100% { transform: translateX(0%); }
-  }
-  
-  #imageContext.shake {
-      animation: shake 0.2s;
-  }
+	0% {
+		transform: scale(1);
+	}
+	20% {
+		transform: scale(1.05);
+	}
+	40% {
+		transform: scale(1);
+	}
+	60% {
+		transform: scale(1.05);
+	}
+	80% {
+		transform: scale(1);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
 
-  @keyframes damageEffect {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+#imageContext.shake {
+	animation: shake 0.2s;
+}
+
+@keyframes damageEffect {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+	100% {
+		opacity: 1;
+	}
 }
 
 @keyframes deathEffect {
-    0% { opacity: 1; }
-    100% { opacity: 0; }
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
 }
 
 .enemy-damage {
-    animation: damageEffect 0.5s forwards;
+	animation: damageEffect 0.5s forwards;
 }
 
 .enemy-death {
-    animation: deathEffect 1s forwards;
+	animation: deathEffect 1s forwards;
 }
+
+/* @media only screen and (max-width: 500px) {
+	body {
+		font-size: 2em;
+	}
+
+	#canvasContainer,
+	#buttonContainer {
+		width: 100vw; 
+		height: auto;
+	}
+
+	.game-button {
+		width: 33.3vw;
+		height: auto;
+	}
+} */
