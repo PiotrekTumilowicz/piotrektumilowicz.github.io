@@ -1,0 +1,127 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'); */
+
+body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	height: 100vh;
+	overflow: hidden;
+	background-color: #222323;
+}
+
+#canvasContainer,
+#buttonContainer {
+	display: inline-block;
+	position: relative;
+}
+#mapContext {
+	position: absolute;
+	border: solid #222323 5px;
+	display: none;
+	top: 0;
+	z-index: 9;
+}
+#playerImageContext {
+	position: absolute;
+	z-index: 2;
+}
+#enemyImageContext {
+	position: absolute;
+	z-index: 1;
+}
+#backgroundPlayerUi{
+	position: relative; 
+	z-index: 4;
+}
+
+#buttonsContainer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1px;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.game-button {
+	width: 106px;
+	height: 106px;
+	background-color: #222323;
+	background-size: cover;
+	border: none;
+	margin-bottom: 5px;
+}
+
+@keyframes shake {
+	0% {
+		transform: scale(1);
+	}
+	20% {
+		transform: scale(1.05);
+	}
+	40% {
+		transform: scale(1);
+	}
+	60% {
+		transform: scale(1.05);
+	}
+	80% {
+		transform: scale(1);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+#imageContext.shake {
+	animation: shake 0.2s;
+}
+
+@keyframes damageEffect {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes deathEffect {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.enemy-damage {
+	animation: damageEffect 0.5s forwards;
+}
+
+.enemy-death {
+	animation: deathEffect 1s forwards;
+}
+
+/* @media only screen and (max-width: 500px) {
+	body {
+		font-size: 2em;
+	}
+
+	#canvasContainer,
+	#buttonContainer {
+		width: 100vw; 
+		height: auto;
+	}
+
+	.game-button {
+		width: 33.3vw;
+		height: auto;
+	}
+} */
