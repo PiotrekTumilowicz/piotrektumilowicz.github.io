@@ -6,11 +6,10 @@ export class Enemy {
 		this.hp = hp;
 		this.damage = 1;
 		this.idleImg = idleImg;
-        this.prepareToAttackImg = prepareToAttackImg;
-        this.attackImg = attackImg;
+		this.prepareToAttackImg = prepareToAttackImg;
+		this.attackImg = attackImg;
 		this.damageImg = damageImg;
 		this.deadImg = deadImg;
-		
 	}
 }
 export class EnemyManager {
@@ -25,15 +24,23 @@ export class EnemyManager {
 		return this.enemies.find(enemy => enemy.x === x && enemy.y === y);
 	}
 	renderEnemyIdle(enemy, context, w, h) {
+		console.log('renderEnemyIdle');
 		context.clearRect(0, 0, w, h);
 		this.loadImage(enemy.idleImg).then(img => {
 			context.drawImage(img, 0, 0, w, h);
 		});
 	}
 	renderEnemyPrepareToAttack(enemy, context, w, h) {
-		context.clearRect(0, 0, w, h);
-		this.loadImage(enemy.prepareToAttackImg).then(img => {
+		console.log('renderEnemyPrepareToAttack');
+        context.clearRect(0, 0, w, h);
+		this.loadImage(enemy.damageImg).then(img => {
 			context.drawImage(img, 0, 0, w, h);
+			setTimeout(() => {
+				this.loadImage(enemy.prepareToAttackImg).then(baseImg => {
+					context.clearRect(0, 0, w, h);
+					context.drawImage(baseImg, 0, 0, w, h);
+				});
+			}, 500);
 		});
 	}
 	renderEnemyAttack(enemy, context, w, h) {

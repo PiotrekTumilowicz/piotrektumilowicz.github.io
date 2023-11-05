@@ -1,4 +1,4 @@
-/* @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'); */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 body {
 	display: flex;
@@ -13,45 +13,74 @@ body {
 }
 
 #canvasContainer,
-#buttonContainer {
+#buttonContainer,
+#startGameContainer {
 	display: inline-block;
 	position: relative;
+}
+#labiryntImageContext {
+	z-index: 1;
+}
+#enemyImageContext {
+	position: absolute;
+	z-index: 2;
+}
+#labiryntObjectImageContext {
+	position: absolute;
+	z-index: 3;
+}
+#playerImageContext {
+	position: absolute;
+	z-index: 4;
 }
 #mapContext {
 	position: absolute;
 	border: solid #222323 5px;
 	display: none;
 	top: 0;
+	z-index: 8;
+}
+#playerUiContext {
 	z-index: 9;
 }
-#playerImageContext {
-	position: absolute;
-	z-index: 2;
+#backgroundPlayerUi {
+	position: relative;
+	z-index: 10;
 }
-#enemyImageContext {
+
+.startGameTextStyle {
 	position: absolute;
-	z-index: 1;
-}
-#backgroundPlayerUi{
-	position: relative; 
-	z-index: 4;
+	top: 0;
+	font-family: 'Press Start 2P', cursive; /* Specify the desired font */
+	color: #c6b7be; /* Text color */
+	white-space: pre-wrap; /* Allows text to wrap to the next line */
+	word-break: break-all; /* Allows words to be broken if necessary to prevent overflow */
+	overflow-wrap: break-word; /* Ensures that long words will wrap and not overflow */
+	width: 294px; /* Makes the div take up 100% of the width of its parent */
+	overflow: hidden; /* Hides any overflow */
+	z-index: 12;
 }
 
 #buttonsContainer {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 1px;
+	gap: 0px;
 	position: absolute;
 	top: 0;
 	left: 0;
 }
 
+#startGameContainer {
+	z-index: 11;
+}
+
 .game-button {
 	width: 97px;
 	height: 97px;
-	background-color: #222323;
+	background-color: #232222;
 	background-size: cover;
 	border: none;
+	outline: none;
 	margin-bottom: 4px;
 }
 
@@ -77,7 +106,7 @@ body {
 }
 
 #imageContext.shake {
-	animation: shake 0.2s;
+	animation: shake 0.4s;
 }
 
 @keyframes damageEffect {
